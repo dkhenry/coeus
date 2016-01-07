@@ -1,0 +1,14 @@
+[Unit]
+Description=Coeus - A Vagrant Server
+After=network.target
+
+[Service]
+Type=simple
+User=coeus
+Group=coeus
+WorkingDirectory=/var/www/
+PermissionsStartOnly=true
+ExecStart=/usr/local/bin/coeus
+
+[Install]
+WantedBy=multi-user.target

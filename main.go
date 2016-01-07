@@ -7,7 +7,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
-
+	"strconv"
+	
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"labix.org/v2/mgo"
@@ -19,29 +20,31 @@ var (
 )
 
 type Basebox struct {
-	Namespace string
-	Name      string
-	Version   string
-	Provider  string
-	File      string
+	Namespace string 
+	Name      string 
+	Version   string 
+	Provider  string 
+	File      string 
 }
 
 type Provider struct {
-	Name string
-	Url  string
+	Name string `json:"name"`
+	Url  string `json:"url"`
 }
 
 type Version struct {
-	Version  string
-	Status   string
-	Provders []Provider
+    DescriptionHtml string `json:"description_html"`
+	DescriptionMarkdown string `json:"description_markdown"`
+	Version  string `json:"version"`
+	Status   string `json:"status"`
+	Provders []Provider `json:"providers"`
 }
 
 type Manifest struct {
-	Description      string
-	ShortDescription string
-	Name             string
-	Versions         []Version
+	Description      string `json:"description"`
+	ShortDescription string `json:"short_description"`
+	Name             string `json:"name"`
+	Versions         []Version `json:"versions"`
 }
 
 func RootHandler(w http.ResponseWriter, r *http.Request) {
@@ -62,19 +65,19 @@ func ManifestHandler(w http.ResponseWriter, r *http.Request) {
 	var versions []Version
 	for iter.Next(&result) {
 		var p []Provider
-		p = append(p, Provider{result.Provider, namespace + "/boxes/" + name + "/" + result.Version + "/" + result.Provider + ".box"})
-		versions = append(versions, Version{result.Version, "active", p})
+		p = append(p, Provider{result.Provider, "http://" + r.Host + "/" + namespace + "/boxes/" + name + "/" + result.Version + "/" + result.Provider + ".box"})
+		versions = append(versions, Version{"","",result.Version, "active", p})
 	}
 	msg, err := json.Marshal(Manifest{
-		"Generated manifest for " + namespace + ":" + name,
-		namespace + ":" + name,
+		"Generated manifest for " + namespace + "/" + name,
 		name,
+		namespace + "/" + name,
 		versions,
 	})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
-		w.Header().Add("Content-Type", "text/json")
+		w.Header().Add("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		w.Write(msg)
 	}
@@ -96,8 +99,9 @@ func ProviderHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
 		w.Header().Add("Content-Type", "application/octet-stream")
+		w.Header().Add("Content-Length",strconv.FormatInt(file.Size(),10))	
 		w.WriteHeader(http.StatusOK)
-		io.Copy(w, file)
+		http.ServeContent(w,r,file.Name(),file.UploadDate(),file)
 		file.Close()
 	}
 }

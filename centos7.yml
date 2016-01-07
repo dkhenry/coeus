@@ -1,0 +1,56 @@
+---
+# Prep a CentOS 7 system to run Coeus
+- hosts: 192.168.35.58
+  remote_user: root
+  tasks:
+    - name: Add EPEL repository
+      yumrepo:
+        name: epel
+        description: EPEL YUM repo
+        baseurl: http://download.fedoraproject.org/pub/epel/$releasever/$basearch/
+    - name: Install the VirtualBox repo
+      yumrepo:
+        name: virtualbox
+        description: Oracle Linux / RHEL / CentOS-$releasever / $basearch - VirtualBox
+        baseurl: http://download.virtualbox.org/virtualbox/rpm/el/$releasever/$basearch
+        enabled: yes
+        gpgkey: https://www.virtualbox.org/download/oracle_vbox.asc
+        gpgcheck: yes
+        repo_gpgcheck: yes
+    - name: Install the Development Tools
+      yum: name="@Development Tools" state=present disable_gpg_check=yes
+    - name: Install some necessary packages
+      yum: name={{ item }} state=present disable_gpg_check=yes
+      with_items:
+        - nginx
+        - mongodb
+        - mongodb-server
+        - emacs
+        - curl
+        - kernel-headers
+        - kernel-devel
+        - dkms
+    - name: Install VirtualBox
+      yum: name=VirtualBox-5.0 state=present disable_gpg_check=yes
+    - name: Verify required services are started
+      service: name={{ item }} state=started enabled=yes
+      with_items:
+        - mongod
+        - nginx
+        - vboxdrv
+
+    # Deploy Coeus
+    - name: Copy Over the coeus Binaries
+      unarchive: src=coeus_0.0.1-snapshot_linux_amd64.tar.gz dest=/tmp
+    - shell: cp /tmp/coeus_0.0.1-snapshot_linux_amd64/coeus /usr/local/bin
+    - shell: cp /tmp/coeus_0.0.1-snapshot_linux_amd64/coeus.service /etc/systemd/system/
+    - shell: systemctl daemon-reload
+	- name: copy over the nginx config file
+	- copy: src=50_coeus.conf dest=/etc/nginx/conf.d/
+    - name: verify the user is present
+      user: name=coeus createhome=no
+    - group: name=coeus
+    - name: create the working directory
+      file: path=/var/www state=directory
+    - name: Start the coeus service 
+      service: name=coeus state=started    
