@@ -154,6 +154,20 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func DeleteHandler(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+	namespace := vars["namespace"]
+	name := vars["name"]
+	version := vars["version"]
+
+	// Rightnow we are only supporting virtualbox so this is generated
+	// from the above information
+	basename := namespace + ":" + name + "-" + version + ".box"
+	session.DB("coeus").GridFS("coeus").Remove(basename)
+		
+	w.WriteHeader(http.StatusOK)
+}
+
 var session *mgo.Session
 
 func init() {
@@ -182,7 +196,8 @@ func main() {
 	router.HandleFunc("/{namespace}/{name}", ManifestHandler)
 	router.HandleFunc("/{namespace}/boxes/{name}/{version:[0-9\\.]*}/{provider:.*.box}", ProviderHandler).Methods("GET")
 	router.HandleFunc("/{namespace}/{name}/{version:[0-9\\.]*}/{provider:.*.box}", UploadHandler).Methods("POST")
-
+    router.HandleFunc("/{namespace}/{name}/{version:[0-9\\.]*}", DeleteHandler).Methods("DELETE")
+	
 	//http.Handle("/", router)
 	http.ListenAndServe(*addr, handlers.LoggingHandler(os.Stdout, router))
 
